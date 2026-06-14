@@ -71,13 +71,18 @@ def teams_2026() -> list:
 
 
 def write_template(path: str = ROSTERS_2026):
-    """Write an editable {team: [players]} file, pre-filled with each team's 2022
-    squad as a starting point (edit: drop departed players, add new caps)."""
+    """Write an editable {team: [players]} file for ALL 48 qualified teams,
+    pre-filled with each team's 2022 squad as a starting point. Teams that did
+    not play in 2022 (World Cup newcomers) are left empty and get NO roster-
+    continuity adjustment -- they are treated purely as new teams."""
+    from .fixtures import all_teams_2026
     sq = get_2022_squads()
-    template = {t: sq.get(t, []) for t in teams_2026()}
+    teams = all_teams_2026()
+    template = {t: sq.get(t, []) for t in teams}
+    newcomers = [t for t in teams if t not in sq]
     with open(path, "w") as f:
         json.dump(template, f, indent=1, ensure_ascii=False)
-    return path, len(template)
+    return path, len(template), newcomers
 
 
 def load_current_rosters(path: str = ROSTERS_2026) -> dict:
@@ -107,9 +112,13 @@ if __name__ == "__main__":
     ap.add_argument("--show", action="store_true", help="print continuity from filled file")
     args = ap.parse_args()
     if args.template:
-        p, n = write_template()
-        print(f"wrote template for {n} teams -> {p}\nEdit it (remove departed players, add new), then use --show or pass to predict.")
+        p, n, newcomers = write_template()
+        print(f"wrote template for {n} teams -> {p}")
+        print(f"{len(newcomers)} World Cup newcomers (no 2022 squad, treated as new -> no continuity adjustment):")
+        print("  " + ", ".join(newcomers))
+        print("Edit returning teams (drop departed players, add new caps), then use --show or pass to predict.")
     if args.show:
         scores = continuity_scores()
+        print("Returning teams (continuity vs 2022 squad):")
         for t, c in sorted(scores.items(), key=lambda kv: kv[1]):
-            print(f"{t:24} continuity={c:.2f}")
+            print(f"  {t:24} continuity={c:.2f}")

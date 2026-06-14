@@ -42,9 +42,10 @@ so only goal events are tested — see report header.)
 Optional per-team factor: if a squad has turned over since 2022, discount that
 team's pre-2026 matches. `continuity = Jaccard(2026 squad, 2022 squad)`; 2022
 squads come from StatsBomb open-data, current 2026 squads you supply (not
-reachable here). Usage:
+reachable here). World Cup **newcomers** (no 2022 squad) are treated as new
+teams and get **no** continuity adjustment. Usage:
 ```bash
-python -m src.rosters --template   # writes cache/rosters_2026.json (pre-filled with 2022 squads)
+python -m src.rosters --template   # all 48 teams, pre-filled with 2022 squads, newcomers flagged
 #   edit it: drop departed players, add new caps, per team
 python -m src.rosters --show       # see each team's continuity score
 python -m src.predict --team1 Mexico --team2 "United States" --rosters cache/rosters_2026.json
@@ -71,6 +72,7 @@ suffers from that tournament's historic upsets.
 pip install -r requirements.txt
 python -m src.predict --team1 Argentina --team2 Mexico        # neutral
 python -m src.predict --team1 Mexico --team2 "United States" --host Mexico
+python -m src.fixtures --date 2026-06-14                      # all matches on a date (one fit)
 python -m src.cooling_breaks      # the break analysis
 python -m src.selection           # significance table
 python -m src.backtest            # validation

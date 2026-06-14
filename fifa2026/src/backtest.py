@@ -38,7 +38,7 @@ def backtest_year(year: int):
     games = wc[wc["year"] == year].copy()
     start = games["date"].min()
     train = intl[intl["date"] < start]
-    model = fit(train, start - pd.Timedelta(days=1))
+    model = fit(train, start - pd.Timedelta(days=1), with_rho=False)
 
     P, Y = [], []
     for _, m in games.iterrows():

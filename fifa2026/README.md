@@ -7,9 +7,13 @@ whether anything measurably changes after a **cooling break**.
 ## Approach (short version)
 - **Engine:** Dixon–Coles / Maher **Poisson regression**. Each team has latent
   *attack* and *defense* strengths; expected goals depend on attack vs opponent
-  defense + home advantage, with a low-score correction (ρ) and exponential
-  **time-decay** weighting (recent form counts more). Fit with `statsmodels`, so
-  every effect comes with a p-value.
+  defense + home advantage, with a low-score correction (ρ). Fit with
+  `statsmodels`, so every effect comes with a p-value.
+- **Match weighting** (`weight = competition × recency`): each match is weighted
+  by competition importance (World Cup > continental majors > qualifiers/Nations
+  League > friendlies, friendlies kept non-trivial) times an exponential recency
+  decay (half-life 1.6y). Net profile: **live 2026 highest, then 2023–25
+  majors+friendlies, then WC2022 a little, pre-2022 near-zero.**
 - **From one fit we get all three asks:** the full scoreline distribution yields
   expected goals (*scoring*), summed cells give W/D/L (*result*), and the larger
   win probability gives the *winner*.
@@ -33,6 +37,25 @@ perceived rhythm change does not translate into measurable goals, so per the
 "significant variables only" rule it is excluded from the predictor.
 (Possession/xG are not reachable under this environment's GitHub-only network,
 so only goal events are tested — see report header.)
+
+## Roster continuity (`src/rosters.py`)
+Optional per-team factor: if a squad has turned over since 2022, discount that
+team's pre-2026 matches. `continuity = Jaccard(2026 squad, 2022 squad)`; 2022
+squads come from StatsBomb open-data, current 2026 squads you supply (not
+reachable here). Usage:
+```bash
+python -m src.rosters --template   # writes cache/rosters_2026.json (pre-filled with 2022 squads)
+#   edit it: drop departed players, add new caps, per team
+python -m src.rosters --show       # see each team's continuity score
+python -m src.predict --team1 Mexico --team2 "United States" --rosters cache/rosters_2026.json
+```
+Until you edit the template, continuity is 1.0 everywhere (no effect).
+
+## Calibration diagnostic (`src/calibrate.py`)
+Temperature scaling was tested and **not applied**: across major tournaments
+(WC/Euro/Copa/AFCON since 2012) the optimal T≈0.99 with ~0% log-loss gain — the
+model is already calibrated. (Calibrating on the 2022 upsets alone would have
+over-corrected toward uniform; that's why we validated on a broad set.)
 
 ## Validation (`src/backtest.py`)
 Train strictly before a tournament, predict it, score with log-loss / Brier /

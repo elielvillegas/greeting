@@ -43,11 +43,11 @@ def summarize(model, lam1, lam2, label):
     }
 
 
-def predict(team1, team2, host=None, max_goals=10):
+def predict(team1, team2, host=None, max_goals=10, continuity=None):
     intl = load_internationals()
     wc = load_worldcup()
     ref = intl["date"].max()
-    model = fit(intl, ref)
+    model = fit(intl, ref, continuity=continuity)
     half = fit_half_model(wc)
 
     neutral = host not in (team1, team2)
@@ -89,6 +89,13 @@ if __name__ == "__main__":
     ap.add_argument("--team1", required=True)
     ap.add_argument("--team2", required=True)
     ap.add_argument("--host", default=None, help="team playing at home (gets host advantage)")
+    ap.add_argument("--rosters", default=None,
+                    help="path to filled 2026 rosters JSON; discounts changed-squad history")
     args = ap.parse_args()
-    out = predict(args.team1, args.team2, host=args.host)
+    cont = None
+    if args.rosters:
+        from .rosters import continuity_scores, load_current_rosters
+        cont = continuity_scores(load_current_rosters(args.rosters))
+        print(f"[roster continuity applied for {len(cont)} teams]")
+    out = predict(args.team1, args.team2, host=args.host, continuity=cont)
     print(render(*out))

@@ -4,8 +4,8 @@ Keep iff a statistically significant effect is demonstrated (p<0.05).
 
 | Variable | Evidence | p-value | Decision |
 |---|---|---|---|
-| Team attack/defense strength | LR chi2=3331, df=448 | 0.00e+00 | KEEP |
-| Home / host advantage | beta=0.242 (x1.27 goals) | 1.41e-27 | KEEP |
+| Team attack/defense strength | LR chi2=3440, df=448 | 0.00e+00 | KEEP |
+| Home / host advantage | beta=0.230 (x1.26 goals) | 5.33e-24 | KEEP |
 | Half (2H vs 1H scoring) | beta=0.376 (x1.46) | 2.51e-04 | KEEP |
 | Stage (knockout vs group) | beta=-0.052 (x0.95) | 0.618 | DROP |
 | Venue altitude | no altitude variation in 2014-2026 WC venues | n/a | DROP |

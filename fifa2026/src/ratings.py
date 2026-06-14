@@ -21,7 +21,30 @@ from scipy.stats import poisson
 
 WINDOW_YEARS = 15
 MIN_MATCHES = 25          # teams below this are pooled into "Other"
-DEFAULT_HALF_LIFE = 2.5   # years; time-decay so older form matters less
+DEFAULT_HALF_LIFE = 1.6   # years; short so pre-2022 fades to near-zero
+CONTINUITY_SNAPSHOT = pd.Timestamp("2026-01-01")  # matches before this are "old"
+
+# Competition importance multipliers (friendlies kept non-trivial on purpose).
+COMP_WEIGHTS = [
+    ("FIFA World Cup", 3.0),            # final tournaments (qualifiers handled below)
+    ("UEFA Euro", 2.6), ("Copa América", 2.6),
+    ("African Cup of Nations", 2.4), ("AFC Asian Cup", 2.4),
+    ("Gold Cup", 2.2), ("CONCACAF Championship", 2.2),
+    ("Confederations Cup", 2.2),
+    ("Nations League", 1.7),
+    ("qualification", 1.6),
+    ("Friendly", 1.0),
+]
+
+
+def competition_weight(tournament: str) -> float:
+    t = str(tournament)
+    if "qualification" in t:
+        return 1.6
+    for key, w in COMP_WEIGHTS:
+        if key in t:
+            return w
+    return 1.4  # other competitive matches
 
 
 def _decay_weight(age_years: np.ndarray, half_life: float) -> np.ndarray:
@@ -31,26 +54,39 @@ def _decay_weight(age_years: np.ndarray, half_life: float) -> np.ndarray:
 
 def build_long(matches: pd.DataFrame, ref_date: pd.Timestamp,
                half_life: float = DEFAULT_HALF_LIFE,
-               team_whitelist: set | None = None) -> pd.DataFrame:
-    """Long (two-row-per-match) frame for the Poisson GLM."""
+               team_whitelist: set | None = None,
+               continuity: dict | None = None) -> pd.DataFrame:
+    """Long (two-row-per-match) frame for the Poisson GLM.
+
+    Row weight = recency_decay(age) x competition_multiplier, optionally scaled
+    by per-team roster continuity for pre-snapshot ("old") matches.
+    """
     m = matches[matches["date"] <= ref_date].copy()
     m = m[m["date"] >= ref_date - pd.Timedelta(days=365.25 * WINDOW_YEARS)]
     age = (ref_date - m["date"]).dt.days / 365.25
-    w = _decay_weight(age.to_numpy(), half_life)
+    comp = m["tournament"].map(competition_weight).to_numpy()
+    w = _decay_weight(age.to_numpy(), half_life) * comp
+    old = (m["date"] < CONTINUITY_SNAPSHOT).to_numpy()
+
+    def cont(teams):
+        if not continuity:
+            return np.ones(len(teams))
+        c = teams.map(lambda t: continuity.get(t, 1.0)).to_numpy()
+        return np.where(old, c, 1.0)  # only discount a changed squad's OLD data
 
     home = pd.DataFrame({
         "goals": m["home_score"].to_numpy(int),
         "attack": m["home_team"].to_numpy(),
         "defense": m["away_team"].to_numpy(),
         "home": np.where(m["neutral"].to_numpy(), 0, 1),
-        "weight": w,
+        "weight": w * cont(m["home_team"]),
     })
     away = pd.DataFrame({
         "goals": m["away_score"].to_numpy(int),
         "attack": m["away_team"].to_numpy(),
         "defense": m["home_team"].to_numpy(),
         "home": 0,
-        "weight": w,
+        "weight": w * cont(m["away_team"]),
     })
     long = pd.concat([home, away], ignore_index=True)
 
@@ -129,12 +165,14 @@ def fit_dixon_coles_rho(matches: pd.DataFrame, ref_date: pd.Timestamp,
 
 
 def fit(matches: pd.DataFrame, ref_date: pd.Timestamp,
-        half_life: float = DEFAULT_HALF_LIFE) -> RatingModel:
-    long, teams = build_long(matches, ref_date, half_life)
+        half_life: float = DEFAULT_HALF_LIFE, with_rho: bool = True,
+        continuity: dict | None = None) -> RatingModel:
+    long, teams = build_long(matches, ref_date, half_life, continuity=continuity)
     glm = smf.glm("goals ~ C(attack) + C(defense) + home", data=long,
                   family=sm.families.Poisson(), freq_weights=long["weight"]).fit()
     model = RatingModel(glm, teams, rho=0.0, half_life=half_life)
-    model.rho = fit_dixon_coles_rho(matches, ref_date, model, half_life)
+    if with_rho:  # rho is negligible for W/D/L probs; skip it for fast bulk fits
+        model.rho = fit_dixon_coles_rho(matches, ref_date, model, half_life)
     return model
 
 

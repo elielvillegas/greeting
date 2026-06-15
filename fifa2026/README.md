@@ -73,6 +73,8 @@ pip install -r requirements.txt
 python -m src.predict --team1 Argentina --team2 Mexico        # neutral
 python -m src.predict --team1 Mexico --team2 "United States" --host Mexico
 python -m src.fixtures --date 2026-06-14                      # all matches on a date (one fit)
+python -m src.whatsapp                                        # TODAY, copy-paste block (refreshes results)
+python -m src.whatsapp --date 2026-06-18 --lang both         # any date, English + Spanish
 python -m src.cooling_breaks      # the break analysis
 python -m src.selection           # significance table
 python -m src.backtest            # validation

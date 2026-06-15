@@ -75,7 +75,7 @@ def _nm(team, lang):
 def _row(label, a, res, ph, b, lang):
     r = res[ph]
     draw = "empate" if lang == "es" else "draw"
-    return f"{label:11}{a} {r['p1']*100:.0f}% | {draw} {r['pdraw']*100:.0f}% | {b} {r['p2']*100:.0f}%"
+    return f"{label:<11} {a} {r['p1']*100:.0f}% | {draw} {r['pdraw']*100:.0f}% | {b} {r['p2']*100:.0f}%"
 
 
 def format_block(blocks, date, lang):
